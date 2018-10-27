@@ -26,25 +26,41 @@ n_y = len(all_y.columns)
 train_x, train_y = all_x[:100], all_y[:100]
 test_x, test_y = all_x[100:], all_y[100:]
 
-x = tf.placeholder(tf.float32, shape=[None, n_x])
-y = tf.placeholder(tf.float32, shape=[None, n_y])
+# Number of nodes per layer
+ns = [n_x, 10, 20, 10, n_y]
 
-W = tf.get_variable("W", shape=[n_x, n_y], initializer=tf.zeros_initializer())
-b = tf.get_variable("b", shape=[n_y], initializer=tf.zeros_initializer())
+x = tf.placeholder(tf.float32, shape=[None, ns[0]])
+y = tf.placeholder(tf.float32, shape=[None, ns[-1]])
 
-prediction = tf.nn.softmax(tf.matmul(x, W) - b)
+W1 = tf.get_variable("W1", shape=[ns[0], ns[1]], initializer=tf.truncated_normal_initializer(stddev=0.1))
+b1 = tf.get_variable("b1", shape=[ns[1]], initializer=tf.constant_initializer(0.1))
+h1 = tf.nn.relu(tf.matmul(x, W1) + b1)
 
-cost = tf.reduce_mean(-tf.reduce_sum(y * tf.log(prediction), axis=1))
+W2 = tf.get_variable("W2", shape=[ns[1], ns[2]], initializer=tf.truncated_normal_initializer(stddev=0.1))
+b2 = tf.get_variable("b2", shape=[ns[2]], initializer=tf.constant_initializer(0.1))
+h2 = tf.nn.relu(tf.matmul(h1, W2) + b2)
+
+W3 = tf.get_variable("W3", shape=[ns[2], ns[3]], initializer=tf.truncated_normal_initializer(stddev=0.1))
+b3 = tf.get_variable("b3", shape=[ns[3]], initializer=tf.constant_initializer(0.1))
+h3 = tf.nn.relu(tf.matmul(h2, W3) + b3)
+
+W4 = tf.get_variable("W4", shape=[ns[3], ns[4]], initializer=tf.truncated_normal_initializer(stddev=0.1))
+b4 = tf.get_variable("b4", shape=[ns[4]], initializer=tf.constant_initializer(0.1))
+h4 = tf.nn.relu(tf.matmul(h3, W4) + b4)
+
+prediction = h4
+
+cost = tf.losses.softmax_cross_entropy(onehot_labels=y, logits=prediction, scope="Cost_Function")
 
 accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(prediction, axis=1), tf.argmax(y, axis=1)), tf.float32))
 
-optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.01).minimize(cost)
+optimizer = tf.train.AdagradOptimizer(learning_rate=0.1).minimize(cost)
 
 session.run(tf.global_variables_initializer())
 
-for epoch in range(1000):
+for epoch in range(3000):
     session.run(optimizer, feed_dict={x: train_x, y: train_y})
 
     if epoch % 100 == 0:
         acc = session.run(accuracy, feed_dict={x: test_x, y: test_y})
-        print("Accuracy of Perceptron at epoch {} is {}".format(epoch, accuracy))
+        print("Accuracy of my first dnn at epoch {} is {}".format(epoch, acc))
