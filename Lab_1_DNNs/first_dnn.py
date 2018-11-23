@@ -60,11 +60,11 @@ with g.as_default():
         accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(prediction, axis=1), tf.argmax(y, axis=1)), tf.float32))
         tf.summary.scalar('accuracy', accuracy)
 
-    optimizer = tf.train.AdagradOptimizer(learning_rate=0.1).minimize(cost)
+    optimizer = tf.train.AdagradOptimizer(learning_rate=0.01).minimize(cost)
 
     merged = tf.summary.merge_all()
     train_writer = tf.summary.FileWriter('./logs/train')
-    test_writer  = tf.summary.FileWriter('./logs/test')
+    test_writer = tf.summary.FileWriter('./logs/test')
 
     session.run(tf.global_variables_initializer())
 
@@ -75,5 +75,6 @@ with g.as_default():
             test_summary, acc = session.run([merged, accuracy], feed_dict={x: test_x, y: test_y})
             print("Accuracy of my first dnn at epoch {} is {}".format(epoch, acc))
 
-            train_writer.add_summary(train_summary, epoch)
-            test_writer.add_summary(test_summary, epoch)
+        train_writer.add_summary(train_summary, epoch)
+        test_writer.add_summary(test_summary, epoch)
+
