@@ -1,0 +1,2 @@
+model_checkpoint_path: "/mnt/storage/home/vs15600/Lab_2_CNNs/logs/exp_bs_128_lr_0.0001_train/model.ckpt-9999"
+all_model_checkpoint_paths: "/mnt/storage/home/vs15600/Lab_2_CNNs/logs/exp_bs_128_lr_0.0001_train/model.ckpt-9999"
