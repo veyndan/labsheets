@@ -1,14 +1,8 @@
-############################################################
-#                                                          #
-#  Code for Lab 1: Intro to TensorFlow and Blue Crystal 4  #
-#                                                          #
-############################################################
-
-'''Based on TensorFLow's tutorial: A deep MNIST classifier using convolutional layers.
+"""Based on TensorFLow's tutorial: A deep MNIST classifier using convolutional layers.
 
 See extensive documentation at
 https://www.tensorflow.org/get_started/mnist/pros
-'''
+"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -26,14 +20,10 @@ import cifar10 as cf
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('data-dir', os.getcwd() + '/dataset/',
-                            'Directory where the dataset will be stored and checkpoint. (default: %(default)s)')
-tf.app.flags.DEFINE_integer('max-steps', 10000,
-                            'Number of mini-batches to train on. (default: %(default)d)')
-tf.app.flags.DEFINE_integer('log-frequency', 10,
-                            'Number of steps between logging results to the console and saving summaries (default: %(default)d)')
-tf.app.flags.DEFINE_integer('save-model', 1000,
-                            'Number of steps between model saves (default: %(default)d)')
+tf.app.flags.DEFINE_string('data-dir', os.getcwd() + '/dataset/', 'Directory where the dataset will be stored and checkpoint. (default: %(default)s)')
+tf.app.flags.DEFINE_integer('max-steps', 10000, 'Number of mini-batches to train on. (default: %(default)d)')
+tf.app.flags.DEFINE_integer('log-frequency', 10, 'Number of steps between logging results to the console and saving summaries (default: %(default)d)')
+tf.app.flags.DEFINE_integer('save-model', 1000, 'Number of steps between model saves (default: %(default)d)')
 
 # Optimisation hyperparameters
 tf.app.flags.DEFINE_integer('batch-size', 128, 'Number of examples per mini-batch (default: %(default)d)')
@@ -42,36 +32,35 @@ tf.app.flags.DEFINE_integer('img-width', 32, 'Image width (default: %(default)d)
 tf.app.flags.DEFINE_integer('img-height', 32, 'Image height (default: %(default)d)')
 tf.app.flags.DEFINE_integer('img-channels', 3, 'Image channels (default: %(default)d)')
 tf.app.flags.DEFINE_integer('num-classes', 10, 'Number of classes (default: %(default)d)')
-tf.app.flags.DEFINE_string('log-dir', '{cwd}/logs/'.format(cwd=os.getcwd()),
-                           'Directory where to write event logs and checkpoint. (default: %(default)s)')
+tf.app.flags.DEFINE_string('log-dir', '{cwd}/logs/'.format(cwd=os.getcwd()), 'Directory where to write event logs and checkpoint. (default: %(default)s)')
 
+run_log_dir = os.path.join(FLAGS.log_dir, 'exp_bs_{bs}_lr_{lr}'.format(bs=FLAGS.batch_size, lr=FLAGS.learning_rate))
 
-run_log_dir = os.path.join(FLAGS.log_dir,
-                           'exp_bs_{bs}_lr_{lr}'.format(bs=FLAGS.batch_size,
-                                                        lr=FLAGS.learning_rate))
 
 def weight_variable(shape):
     """weight_variable generates a weight variable of a given shape."""
     initial = tf.truncated_normal(shape, stddev=0.1)
     return tf.Variable(initial, name='weights')
 
+
 def bias_variable(shape):
     """bias_variable generates a bias variable of a given shape."""
     initial = tf.constant(0.1, shape=shape)
     return tf.Variable(initial, name='biases')
 
+
 def deepnn(x):
     """deepnn builds the graph for a deep net for classifying CIFAR10 images.
 
-  Args:
-      x: an input tensor with the dimensions (N_examples, 3072), where 3072 is the
+    Args:
+        x: an input tensor with the dimensions (N_examples, 3072), where 3072 is the
         number of pixels in a standard CIFAR10 image.
 
-  Returns:
-      y: is a tensor of shape (N_examples, 10), with values
+    Returns:
+        y: is a tensor of shape (N_examples, 10), with values
         equal to the logits of classifying the object images into one of 10 classes
         (airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck)
-      img_summary: a string tensor containing sampled input images.
+        img_summary: a string tensor containing sampled input images.
     """
     # Reshape to use within a convolutional neural net.  Last dimension is for
     # 'features' - it would be 1 one for a grayscale image, 3 for an RGB image,
@@ -88,13 +77,36 @@ def deepnn(x):
         h_conv1 = tf.nn.relu(tf.nn.conv2d(x_image, W_conv1, strides=[1, 1, 1, 1], padding='SAME', name='convolution') + b_conv1)
 
         # Pooling layer - downsamples by 2X.
-        h_pool1 = tf.nn.max_pool(h_conv1, ksize=[1, 2, 2, 1],
-                          strides=[1, 2, 2, 1], padding='SAME', name='pooling')
+        h_pool1 = tf.nn.max_pool(h_conv1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name='pooling')
 
-        # You need to continue building your convolutional network!
+    # Second convolutional layer - maps one image to 64 feature maps.
+    with tf.variable_scope('Conv_2'):
+        W_conv2 = weight_variable([5, 5, 32, 64])
+        b_conv2 = bias_variable([64])
+        h_conv2 = tf.nn.relu(tf.nn.conv2d(h_pool1, W_conv2, strides=[1, 1, 1, 1], padding='SAME', name='convolution') + b_conv2)
 
-        y_conv = -1
-        return y_conv, img_summary
+        h_pool2 = tf.nn.max_pool(h_conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name='pooling')
+
+    with tf.variable_scope('FC_1'):
+        W_fc1 = weight_variable([8 * 8 * 64, 1024])
+        b_fc1 = bias_variable([1024])
+
+        h_pool2_flat = tf.reshape(h_pool2, [-1, 8 * 8 * 64])
+        h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+
+    with tf.variable_scope('FC_2'):
+        W_fc2 = weight_variable([1024, 1024])
+        b_fc2 = bias_variable([1024])
+
+        h_fc2 = tf.matmul(h_fc1, W_fc2) + b_fc2
+
+    with tf.variable_scope('Out'):
+        W_out = weight_variable([1024, FLAGS.num_classes])
+        b_out = bias_variable([FLAGS.num_classes])
+
+        y_conv = tf.matmul(h_fc2, W_out) + b_out
+
+    return y_conv, img_summary
 
 
 def main(_):
@@ -113,14 +125,15 @@ def main(_):
     y_conv, img_summary = deepnn(x)
 
     # Define your loss function - softmax_cross_entropy
-    cross_entropy = 0
-    
+    with tf.variable_scope('x_entropy'):
+        cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y_conv))
+
     # Define your AdamOptimiser, using FLAGS.learning_rate to minimixe the loss function
-    
-    # calculate the prediction and the accuracy
-    correct_prediction = 0
-    accuracy = 0
-    
+    optimiser = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(cross_entropy)
+
+    correct_prediction = tf.cast(tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1)), tf.float32)
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name='accuracy')
+
     loss_summary = tf.summary.scalar('Loss', cross_entropy)
     acc_summary = tf.summary.scalar('Accuracy', accuracy)
 
@@ -143,23 +156,22 @@ def main(_):
             # Training: Backpropagation using train set
             (trainImages, trainLabels) = cifar.getTrainBatch()
             (testImages, testLabels) = cifar.getTestBatch()
-            
-            ##_, summary_str = sess.run([optimiser, training_summary], feed_dict={x: trainImages, y_: trainLabels})
 
-            
-            ##if step % (FLAGS.log_frequency + 1)== 0:
-            ##    summary_writer.add_summary(summary_str, step)
+            _, summary_str = sess.run([optimiser, training_summary], feed_dict={x: trainImages, y_: trainLabels})
 
-            ## Validation: Monitoring accuracy using validation set
-            ##if step % FLAGS.log_frequency == 0:
-            ##    validation_accuracy, summary_str = sess.run([accuracy, validation_summary], feed_dict={x: testImages, y_: testLabels})
-            ##    print('step %d, accuracy on validation batch: %g' % (step, validation_accuracy))
-            ##    summary_writer_validation.add_summary(summary_str, step)
+            if step % (FLAGS.log_frequency + 1) == 0:
+                summary_writer.add_summary(summary_str, step)
 
-            ## Save the model checkpoint periodically.
-            ##if step % FLAGS.save_model == 0 or (step + 1) == FLAGS.max_steps:
-            ##    checkpoint_path = os.path.join(run_log_dir + '_train', 'model.ckpt')
-            ##    saver.save(sess, checkpoint_path, global_step=step)
+            # Validation: Monitoring accuracy using validation set
+            if step % FLAGS.log_frequency == 0:
+                validation_accuracy, summary_str = sess.run([accuracy, validation_summary], feed_dict={x: testImages, y_: testLabels})
+                print('step %d, accuracy on validation batch: %g' % (step, validation_accuracy))
+                summary_writer_validation.add_summary(summary_str, step)
+
+            # Save the model checkpoint periodically.
+            if step % FLAGS.save_model == 0 or (step + 1) == FLAGS.max_steps:
+                checkpoint_path = os.path.join(run_log_dir + '_train', 'model.ckpt')
+                saver.save(sess, checkpoint_path, global_step=step)
 
         # Testing
 
@@ -172,15 +184,14 @@ def main(_):
         # don't loop back when we reach the end of the test set
         while evaluated_images != cifar.nTestSamples:
             (testImages, testLabels) = cifar.getTestBatch(allowSmallerBatches=True)
-            ##test_accuracy_temp, _ = sess.run([accuracy, test_summary], feed_dict={x: testImages, y_: testLabels})
+            test_accuracy_temp, _ = sess.run([accuracy, test_summary], feed_dict={x: testImages, y_: testLabels})
 
-            ##batch_count = batch_count + 1
-            ##test_accuracy = test_accuracy + test_accuracy_temp
-            ##evaluated_images = evaluated_images + testLabels.shape[0]
+            batch_count = batch_count + 1
+            test_accuracy = test_accuracy + test_accuracy_temp
+            evaluated_images = evaluated_images + testLabels.shape[0]
 
         test_accuracy = test_accuracy / batch_count
         print('test set: accuracy on test set: %0.3f' % test_accuracy)
-
 
 
 if __name__ == '__main__':
