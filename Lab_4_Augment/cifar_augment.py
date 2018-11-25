@@ -181,8 +181,8 @@ def main(_):
     saver = tf.train.Saver(tf.global_variables(), max_to_keep=1)
 
     with tf.Session() as sess:
-        summary_writer = tf.summary.FileWriter(run_log_dir + '_train', sess.graph)
-        summary_writer_validation = tf.summary.FileWriter(run_log_dir + '_validate', sess.graph)
+        summary_writer = tf.summary.FileWriter(run_log_dir + '_train', sess.graph, flush_secs=5)
+        summary_writer_validation = tf.summary.FileWriter(run_log_dir + '_validate', sess.graph, flush_secs=5)
 
         sess.run(tf.global_variables_initializer())
 
