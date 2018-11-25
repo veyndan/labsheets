@@ -36,7 +36,6 @@ tf.app.flags.DEFINE_integer('img-channels', 3, 'Image channels (default: %(defau
 tf.app.flags.DEFINE_integer('num-classes', 10, 'Number of classes (default: %(default)d)')
 tf.app.flags.DEFINE_string('log-dir', '{cwd}/logs/'.format(cwd=os.getcwd()), 'Directory where to write event logs and checkpoint. (default: %(default)s)')
 
-# run_log_dir = os.path.join(FLAGS.log_dir, 'exp_bs_{bs}_lr_{lr}'.format(bs=FLAGS.batch_size, lr=FLAGS.learning_rate))
 run_log_dir = os.path.join(FLAGS.log_dir, 'exp_BN_bs_{bs}_lr_{lr}'.format(bs=FLAGS.batch_size, lr=FLAGS.learning_rate))
 
 xavier_initializer = tf.contrib.layers.xavier_initializer(uniform=True)
@@ -72,72 +71,67 @@ def deepnn(x):
 
     img_summary = tf.summary.image('Input_images', x_image)
 
-    # First convolutional layer - maps one image to 32 feature maps.
-    with tf.variable_scope('Conv_1'):
-        W_conv1 = weight_variable([5, 5, FLAGS.img_channels, 32])
+    conv1 = tf.layers.conv2d(
+        inputs=x_image,
+        filters=32,
+        kernel_size=[5, 5],
+        padding='same',
+        use_bias=False,
+        kernel_initializer=xavier_initializer,
+        name='conv1'
+    )
+    conv1_bn = tf.nn.relu(tf.layers.batch_normalization(conv1))
+    pool1 = tf.layers.max_pooling2d(
+        inputs=conv1_bn,
+        pool_size=[2, 2],
+        strides=2,
+        name='pool1'
+    )
 
-        # batch normalization
-        Z1 = tf.nn.conv2d(x_image, W_conv1, strides=[1, 1, 1, 1], padding='SAME', name='convolution')
+    conv2 = tf.layers.conv2d(
+        inputs=pool1,
+        filters=64,
+        kernel_size=[5, 5],
+        padding='same',
+        use_bias=False,
+        kernel_initializer=xavier_initializer,
+        name='conv2'
+    )
+    conv2_bn = tf.nn.relu(tf.layers.batch_normalization(conv2))
+    pool2 = tf.layers.max_pooling2d(
+        inputs=conv2_bn,
+        pool_size=[2, 2],
+        strides=2,
+        name='pool2'
+    )
 
-        # find mean and variance
-        Z1_mean, Z1_var = tf.nn.moments(Z1, [0])
+    pool2_flat = tf.reshape(pool2, [-1, 8 * 8 * 64])
 
-        # find Z1_hat, the batch norm of Z1
-        epsilon = tf.constant(1e-5) # small const to avoid div by 0
-        Z1_sd_epsilon = tf.sqrt(Z1_var + epsilon)
-        Z1_hat = (Z1 - Z1_mean) / Z1_sd_epsilon
+    fc1 = tf.layers.dense(
+        inputs=pool2_flat,
+        units=1024,
+        activation=tf.nn.relu,
+        use_bias=True,
+        bias_initializer=xavier_initializer,
+        name="fc1"
+    )
 
-        gamma1 = weight_variable([32, 32, 32])
-        beta1 = bias_variable([32])
+    fc2 = tf.layers.dense(
+        inputs=fc1,
+        units=1024,
+        activation=tf.nn.relu,
+        use_bias=True,
+        bias_initializer=xavier_initializer,
+        name="fc2"
+    )
 
-        # Scale and shift to obtain the final output of the batch normalisation
-        # this value is fed into the activation function (here a ReLU)
-        bn1 = gamma1 * Z1_hat + beta1
-        h_conv1_bn = tf.nn.relu(bn1)
-
-        # Pooling layer - downsamples by 2X.
-        h_pool1 = tf.nn.max_pool(h_conv1_bn, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name='pooling')
-
-    # Second convolutional layer - maps one image to 64 feature maps.
-    with tf.variable_scope('Conv_2'):
-        W_conv2 = weight_variable([5, 5, 32, 64])
-
-        # batch norm
-        Z2 = tf.nn.conv2d(h_pool1, W_conv2, strides=[1, 1, 1, 1], padding='SAME', name='convolution')
-
-        # find mean and var
-        Z2_mean, Z2_var = tf.nn.moments(Z2, [0])
-
-        # find Z2_hat, the batch norm of Z2
-        Z2_sd_epsilon = tf.sqrt(Z2_var + epsilon)
-        Z2_hat = (Z2 - Z2_mean) / Z2_sd_epsilon
-
-        gamma2 = weight_variable([16, 16, 64])
-        beta2 = bias_variable([64])
-
-        bn2 = gamma2 * Z2_hat + beta2
-        h_conv2_bn = tf.nn.relu(bn2)
-
-        h_pool2 = tf.nn.max_pool(h_conv2_bn, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name='pooling')
-
-    with tf.variable_scope('FC_1'):
-        W_fc1 = weight_variable([8 * 8 * 64, 1024])
-        b_fc1 = bias_variable([1024])
-
-        h_pool2_flat = tf.reshape(h_pool2, [-1, 8 * 8 * 64])
-        h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
-
-    with tf.variable_scope('FC_2'):
-        W_fc2 = weight_variable([1024, 1024])
-        b_fc2 = bias_variable([1024])
-
-        h_fc2 = tf.nn.relu(tf.matmul(h_fc1, W_fc2) + b_fc2)
-
-    with tf.variable_scope('Out'):
-        W_out = weight_variable([1024, FLAGS.num_classes])
-        b_out = bias_variable([FLAGS.num_classes])
-
-        y_conv = tf.matmul(h_fc2, W_out) + b_out
+    y_conv = tf.layers.dense(
+        inputs=fc2,
+        units=FLAGS.num_classes,
+        use_bias=True,
+        bias_initializer=xavier_initializer,
+        name="y_conv"
+    )
 
     return y_conv, img_summary
 
