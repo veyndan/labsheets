@@ -50,7 +50,7 @@ def bias_variable(shape):
     return tf.Variable(xavier_initializer(shape), name='biases')
 
 
-def deepnn(x):
+def deepnn(x, is_training):
     """deepnn builds the graph for a deep net for classifying CIFAR10 images.
 
     Args:
@@ -69,6 +69,9 @@ def deepnn(x):
 
     x_image = tf.reshape(x, [-1, FLAGS.img_width, FLAGS.img_height, FLAGS.img_channels])
 
+    x_image = tf.cond(is_training, lambda: tf.map_fn(tf.image.random_flip_left_right, x_image), lambda: x_image)
+    x_image = tf.cond(is_training, lambda: tf.map_fn(lambda i: tf.image.random_brightness(i, 0.2), x_image), lambda: x_image)
+
     img_summary = tf.summary.image('Input_images', x_image)
 
     conv1 = tf.layers.conv2d(
@@ -81,7 +84,7 @@ def deepnn(x):
         bias_initializer=xavier_initializer,
         name='conv1'
     )
-    conv1_bn = tf.nn.relu(tf.layers.batch_normalization(conv1))
+    conv1_bn = tf.nn.relu(tf.layers.batch_normalization(conv1, training=is_training))
     pool1 = tf.layers.max_pooling2d(
         inputs=conv1_bn,
         pool_size=[2, 2],
@@ -99,7 +102,7 @@ def deepnn(x):
         bias_initializer=xavier_initializer,
         name='conv2'
     )
-    conv2_bn = tf.nn.relu(tf.layers.batch_normalization(conv2))
+    conv2_bn = tf.nn.relu(tf.layers.batch_normalization(conv2, training=is_training))
     pool2 = tf.layers.max_pooling2d(
         inputs=conv2_bn,
         pool_size=[2, 2],
@@ -153,9 +156,9 @@ def main(_):
         # Define loss and optimizer
         y_ = tf.placeholder(tf.float32, [None, FLAGS.num_classes])
 
+    is_training = tf.placeholder(bool, [])
     # Build the graph for the deep net
-    y_conv, img_summary = deepnn(x)
-
+    y_conv, img_summary = deepnn(x, is_training)
     # Define your loss function - softmax_cross_entropy
     with tf.variable_scope('x_entropy'):
         cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y_conv))
@@ -164,7 +167,9 @@ def main(_):
     # optimiser = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(cross_entropy)
     global_step = tf.Variable(0, trainable=False)
     learning_rate = tf.train.exponential_decay(FLAGS.learning_rate, global_step, FLAGS.decay_steps, FLAGS.decay_rate)
-    optimiser = tf.train.AdamOptimizer(learning_rate).minimize(cross_entropy, global_step=global_step)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        optimiser = tf.train.AdamOptimizer(learning_rate).minimize(cross_entropy, global_step=global_step)
 
     correct_prediction = tf.cast(tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1)), tf.float32)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name='accuracy')
@@ -192,14 +197,14 @@ def main(_):
             (trainImages, trainLabels) = cifar.getTrainBatch()
             (testImages, testLabels) = cifar.getTestBatch()
 
-            _, summary_str = sess.run([optimiser, training_summary], feed_dict={x: trainImages, y_: trainLabels})
+            _, summary_str = sess.run([optimiser, training_summary], feed_dict={x: trainImages, y_: trainLabels, is_training: True})
 
             if step % (FLAGS.log_frequency + 1) == 0:
                 summary_writer.add_summary(summary_str, step)
 
             # Validation: Monitoring accuracy using validation set
             if step % FLAGS.log_frequency == 0:
-                validation_accuracy, summary_str = sess.run([accuracy, validation_summary], feed_dict={x: testImages, y_: testLabels})
+                validation_accuracy, summary_str = sess.run([accuracy, validation_summary], feed_dict={x: testImages, y_: testLabels, is_training: False})
                 print('step %d, accuracy on validation batch: %g' % (step, validation_accuracy))
                 summary_writer_validation.add_summary(summary_str, step)
 
@@ -219,7 +224,7 @@ def main(_):
         # don't loop back when we reach the end of the test set
         while evaluated_images != cifar.nTestSamples:
             (testImages, testLabels) = cifar.getTestBatch(allowSmallerBatches=True)
-            test_accuracy_temp, _ = sess.run([accuracy, test_summary], feed_dict={x: testImages, y_: testLabels})
+            test_accuracy_temp, _ = sess.run([accuracy, test_summary], feed_dict={x: testImages, y_: testLabels, is_training: False})
 
             batch_count = batch_count + 1
             test_accuracy = test_accuracy + test_accuracy_temp
