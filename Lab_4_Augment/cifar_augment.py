@@ -28,8 +28,8 @@ tf.app.flags.DEFINE_integer('save-model', 1000, 'Number of steps between model s
 # Optimisation hyperparameters
 tf.app.flags.DEFINE_integer('batch-size', 256, 'Number of examples per mini-batch (default: %(default)d)')
 tf.app.flags.DEFINE_float('learning-rate', 1e-3, 'Learning rate (default: %(default)d)')
-tf.app.flags.DEFINE_string('decay_steps', 1000, 'Decay steps for learning rate')
-tf.app.flags.DEFINE_string('decay_rate', 0.8, 'Decay rate for learning rate')
+tf.app.flags.DEFINE_integer('decay-steps', 1000, 'Decay steps for learning rate')
+tf.app.flags.DEFINE_float('decay-rate', 0.8, 'Decay rate for learning rate')
 tf.app.flags.DEFINE_integer('img-width', 32, 'Image width (default: %(default)d)')
 tf.app.flags.DEFINE_integer('img-height', 32, 'Image height (default: %(default)d)')
 tf.app.flags.DEFINE_integer('img-channels', 3, 'Image channels (default: %(default)d)')
@@ -39,17 +39,16 @@ tf.app.flags.DEFINE_string('log-dir', '{cwd}/logs/'.format(cwd=os.getcwd()), 'Di
 # run_log_dir = os.path.join(FLAGS.log_dir, 'exp_bs_{bs}_lr_{lr}'.format(bs=FLAGS.batch_size, lr=FLAGS.learning_rate))
 run_log_dir = os.path.join(FLAGS.log_dir, 'exp_BN_bs_{bs}_lr_{lr}'.format(bs=FLAGS.batch_size, lr=FLAGS.learning_rate))
 
+xavier_initializer = tf.contrib.layers.xavier_initializer(uniform=True)
 
 def weight_variable(shape):
     """weight_variable generates a weight variable of a given shape."""
-    initial = tf.truncated_normal(shape, stddev=0.1)
-    return tf.Variable(initial, name='weights')
+    return tf.Variable(xavier_initializer(shape), name='weights')
 
 
 def bias_variable(shape):
     """bias_variable generates a bias variable of a given shape."""
-    initial = tf.constant(0.1, shape=shape)
-    return tf.Variable(initial, name='biases')
+    return tf.Variable(xavier_initializer(shape), name='biases')
 
 
 def deepnn(x):
@@ -88,8 +87,8 @@ def deepnn(x):
         Z1_sd_epsilon = tf.sqrt(Z1_var + epsilon)
         Z1_hat = (Z1 - Z1_mean) / Z1_sd_epsilon
 
-        gamma1 = tf.Variable(tf.ones([32, 32, 32]))
-        beta1 = tf.Variable(tf.ones([32]))
+        gamma1 = weight_variable([32, 32, 32])
+        beta1 = bias_variable([32])
 
         # Scale and shift to obtain the final output of the batch normalisation
         # this value is fed into the activation function (here a ReLU)
@@ -113,8 +112,8 @@ def deepnn(x):
         Z2_sd_epsilon = tf.sqrt(Z2_var + epsilon)
         Z2_hat = (Z2 - Z2_mean) / Z2_sd_epsilon
 
-        gamma2 = tf.Variable(tf.ones([16, 16, 64]))
-        beta2 = tf.Variable(tf.ones([64]))
+        gamma2 = weight_variable([16, 16, 64])
+        beta2 = bias_variable([64])
 
         bn2 = gamma2 * Z2_hat + beta2
         h_conv2_bn = tf.nn.relu(bn2)
