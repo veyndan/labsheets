@@ -98,7 +98,7 @@ def deepnn(x):
         W_fc2 = weight_variable([1024, 1024])
         b_fc2 = bias_variable([1024])
 
-        h_fc2 = tf.matmul(h_fc1, W_fc2) + b_fc2
+        h_fc2 = tf.nn.relu(tf.matmul(h_fc1, W_fc2) + b_fc2)
 
     with tf.variable_scope('Out'):
         W_out = weight_variable([1024, FLAGS.num_classes])
