@@ -76,8 +76,9 @@ def deepnn(x):
         filters=32,
         kernel_size=[5, 5],
         padding='same',
-        use_bias=False,
+        use_bias=True,
         kernel_initializer=xavier_initializer,
+        bias_initializer=xavier_initializer,
         name='conv1'
     )
     conv1_bn = tf.nn.relu(tf.layers.batch_normalization(conv1))
@@ -93,8 +94,9 @@ def deepnn(x):
         filters=64,
         kernel_size=[5, 5],
         padding='same',
-        use_bias=False,
+        use_bias=True,
         kernel_initializer=xavier_initializer,
+        bias_initializer=xavier_initializer,
         name='conv2'
     )
     conv2_bn = tf.nn.relu(tf.layers.batch_normalization(conv2))
