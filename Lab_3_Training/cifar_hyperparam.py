@@ -28,8 +28,8 @@ tf.app.flags.DEFINE_integer('save-model', 1000, 'Number of steps between model s
 # Optimisation hyperparameters
 tf.app.flags.DEFINE_integer('batch-size', 256, 'Number of examples per mini-batch (default: %(default)d)')
 tf.app.flags.DEFINE_float('learning-rate', 1e-3, 'Learning rate (default: %(default)d)')
-tf.app.flags.DEFINE_string('decay_steps', 1000, 'Decay steps for learning rate')
-tf.app.flags.DEFINE_string('decay_rate', 0.8, 'Decay rate for learning rate')
+tf.app.flags.DEFINE_integer('decay-steps', 1000, 'Decay steps for learning rate')
+tf.app.flags.DEFINE_float('decay-rate', 0.8, 'Decay rate for learning rate')
 tf.app.flags.DEFINE_integer('img-width', 32, 'Image width (default: %(default)d)')
 tf.app.flags.DEFINE_integer('img-height', 32, 'Image height (default: %(default)d)')
 tf.app.flags.DEFINE_integer('img-channels', 3, 'Image channels (default: %(default)d)')
