@@ -114,6 +114,7 @@ def deepnn(x):
         units=1024,
         activation=tf.nn.relu,
         use_bias=True,
+        kernel_initializer=xavier_initializer,
         bias_initializer=xavier_initializer,
         name="fc1"
     )
@@ -123,6 +124,7 @@ def deepnn(x):
         units=1024,
         activation=tf.nn.relu,
         use_bias=True,
+        kernel_initializer=xavier_initializer,
         bias_initializer=xavier_initializer,
         name="fc2"
     )
@@ -131,6 +133,7 @@ def deepnn(x):
         inputs=fc2,
         units=FLAGS.num_classes,
         use_bias=True,
+        kernel_initializer=xavier_initializer,
         bias_initializer=xavier_initializer,
         name="y_conv"
     )
